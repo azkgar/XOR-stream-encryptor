@@ -7,7 +7,7 @@
  * Key: byte array of length key length
  *********************************************/
 
-void rotateKeyLeft(uint8_t *key, size_t key_len)
+void rotateKeyLeft(uint8_t *key, size_t keyLen)
 {
     // Variable to store first bit of first byte
     uint8_t firstBit;
@@ -16,7 +16,7 @@ void rotateKeyLeft(uint8_t *key, size_t key_len)
     firstBit = (key[0] >> 7u) & 0x01;
 
     // Shift all bytes one bit to the left
-    for(size_t idx = 0; idx < key_len - 1; idx++)
+    for(size_t idx = 0; idx < keyLen - 1; idx++)
     {
         // Variable to store first bit of idx + 1 byte
         uint8_t nextByteFirstBit;
@@ -32,10 +32,10 @@ void rotateKeyLeft(uint8_t *key, size_t key_len)
     }
 
     // Shift last byte
-    key[key_len - 1] <<= 1u;
+    key[keyLen - 1] <<= 1u;
 
     // Set last bit that wraps up from the 1st byte
-    key[key_len - 1] |= firstBit;
+    key[keyLen - 1] |= firstBit;
 }
 
 
@@ -50,6 +50,10 @@ int main(int argc, char *argv[])
     char *keyFile;
     // Variable for catching the command prompt read result
     int opt;
+    // Variable for key length
+    size_t keyLen;
+    // Variable for key buffer
+    uint8_t *key;
 
     // Initialize threads to 1 as default value
     threads = 1;
@@ -91,6 +95,44 @@ int main(int argc, char *argv[])
             "Error: number of threads must be greater or equal than 1\n");
         return 1;
     }
+
+    // Load key from file
+    FILE *keyFilePtr = fopen(keyFile, "rb");
+
+    // Check if file opened successfully
+    if(keyFilePtr == NULL)
+    {
+        fprintf(stderr,
+            "Error: can't open key file '%s'\n",
+            keyFile);
+        return 1;
+    }
+
+    fseek(keyFilePtr, 0, SEEK_END);
+
+    keyLen = (size_t)ftell(keyFilePtr);
+    rewind(keyFilePtr);
+
+    // Allocate memory for key
+    key = (uint8_t *)malloc(keyLen * sizeof(uint8_t));
+
+    // Check if memory allocation was successful
+    if(key == NULL)
+    {
+        fprintf(stderr,
+            "Error: memory allocation failed for key. Out of memory\n");
+        fclose(keyFilePtr);
+        return 1;
+    }
+
+    // Read key from file
+    fread(key, 1, keyLen, keyFilePtr);
+    fclose(keyFilePtr);
+
+    fprintf(stderr, "Threads: %d || Key Size: %zu bytes\n", threads, keyLen);
+
+    // Free memory
+    free(key);
 
     return 0;
 }
