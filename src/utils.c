@@ -15,18 +15,18 @@
 /**********************************************************************************************
  * @name workerThread
  * @brief Worker thread function that processes blocks from the work queue.
- * @param arg Pointer to the work queue.
+ * @param context Pointer to the work queue.
  * @return NULL
 *********************************************************************************************/
-void *workerThread(void *arg)
+void *workerThread(void *context)
 {
-    // Local variable to hold the work queue pointer
+    // Local variable to hold the work context pointer
     WorkQueue *queue;
     // Local variable to hold the block pointer
     Block *block;
     
-    // Cast the argument to WorkQueue pointer
-    queue = (WorkQueue *)arg;
+    // Cast the context to WorkQueue pointer
+    queue = (WorkQueue *)context;
 
     // Infinite loop to process blocks from the queue
     while(1)
