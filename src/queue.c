@@ -1,3 +1,14 @@
+/**********************************************************************************************
+ * @file queue.c
+ * @brief Implementation of the work queue for managing blocks.
+ * 
+ * This file implements the functions declared in queue.h.
+ * 
+ * @author Azkary Garcia
+ * @date June 30th, 2026
+ * @version 1.0.0
+*********************************************************************************************/
+
 #include "include/queue.h"
 
 void workQueueInit(WorkQueue *queue, size_t capacity)

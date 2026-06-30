@@ -1,3 +1,14 @@
+/**********************************************************************************************
+ * @file utils.c
+ * @brief Implementation of utility functions for the XOR stream encryptor.
+ * 
+ * This file implements the functions declared in utils.h.
+ * 
+ * @author Azkary Garcia
+ * @date June 30th, 2026
+ * @version 1.0.0
+*********************************************************************************************/
+
 #include "utils.h"
 
 void *workerThread(void *arg)

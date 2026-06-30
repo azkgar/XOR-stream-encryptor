@@ -1,6 +1,13 @@
-/**
- * Implements bitwise left-rotation array manipulation and the block XOR logic
- */
+/**********************************************************************************************
+ * @file crypto.c
+ * @brief Implementation of bitwise left-rotation for key manipulation.
+ * 
+ * This file implements the functions declared in crypto.h.
+ * 
+ * @author Azkary Garcia
+ * @date June 30th, 2026
+ * @version 1.0.0
+*********************************************************************************************/
 
 #include "include/crypto.h"
 
