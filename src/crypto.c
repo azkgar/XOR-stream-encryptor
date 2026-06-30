@@ -11,33 +11,35 @@
 
 #include "include/crypto.h"
 
- /**********************************************
- * Rotate the key buffer left by 1 bit in-place
- * Key: byte array of length key length
- *********************************************/
+/**********************************************************************************************
+ * @name rotateKeyLeft
+ * @brief Rotates the key to the left by 1 bit in-place.
+ * @param key Pointer to the key.
+ * @param keyLen Length of the key.
+*********************************************************************************************/
 
 void rotateKeyLeft(uint8_t *key, size_t keyLen)
 {
-    // Variable to store bit that wraps around from the first byte to the last byte
+    // Variable to store the bit that wraps around from the first byte to the last byte
     uint8_t overflowBit;
 
-    // Get bit that wraps around from the first byte to the last byte
+    // Extract bit that wraps around from the first byte to the last byte
     overflowBit = (key[0] >> 7u) & LSB_MASK;
 
-    // Shift all bytes one bit to the left
+    // Shift all bytes of key one bit to the left
     for(size_t idx = 0; idx < keyLen - 1; idx++)
     {
-        // Variable to store first bit of idx + 1 byte
-        uint8_t nextByteFirstBit;
+        // Variable to store MSB of next byte
+        uint8_t nextByteMSB;
 
-        // Get first byte on next byte for shift
-        nextByteFirstBit = (key[idx + 1u] >> 7u) & LSB_MASK;
+        // Get MSB of next byte for shift
+        nextByteMSB = (key[idx + 1u] >> 7u) & LSB_MASK;
 
         // Rotate key by BIT_KEY_ROTATION bits to the left for the current byte
         key[idx] <<= BIT_KEY_ROTATION ;
 
         // Set last bit to the stored one
-        key[idx] |= nextByteFirstBit;
+        key[idx] |= nextByteMSB;
     }
 
     // Rotate key by BIT_KEY_ROTATION bits to the left for the last byte
@@ -46,3 +48,5 @@ void rotateKeyLeft(uint8_t *key, size_t keyLen)
     // Set last bit that wraps up from the 1st byte
     key[keyLen - 1u] |= overflowBit;
 }
+
+/* TODO: Lines of code 38 to 42 are the same as lines 45 to 49. Create a function to avoid code duplication*/

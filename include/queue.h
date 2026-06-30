@@ -1,6 +1,7 @@
 /**********************************************************************************************
  * @file queue.h
- * @brief defines the structures and function prototypes for the work queue and block processing.
+ * @brief defines the structures and function prototypes for the work queue and block 
+ *        processing.
  * 
  * @author Azkary Garcia
  * @date June 30th, 2026
