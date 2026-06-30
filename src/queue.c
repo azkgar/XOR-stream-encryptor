@@ -95,8 +95,19 @@ void workQueuePush(WorkQueue *queue, Block *block)
     pthread_mutex_unlock(&queue->lock);
 }
 
-void dispatchBlocks(WorkQueue *queue, uint8_t *key, size_t keyLen)
+void processStdin(WorkQueue *queue, uint8_t *key, size_t keyLen)
 {
+    size_t capacity = queue->capacity;
+
+    Block **pendingBlocks = (Block **)calloc(capacity, sizeof(Block *));
+
+    if(pendingBlocks == NULL)
+    {
+        fprintf(stderr, 
+                "Error: failed to allocate memory for pending blocks\n");
+        exit(1);
+    }
+
     uint8_t *rotatedKey = (uint8_t *)malloc(keyLen);
     if(rotatedKey == NULL)
     {
@@ -107,6 +118,7 @@ void dispatchBlocks(WorkQueue *queue, uint8_t *key, size_t keyLen)
     memcpy(rotatedKey, key, keyLen);
 
     size_t blockIdx = 0;
+    size_t nextToWrite = 0;
 
     while(1)
     {
@@ -170,6 +182,7 @@ void dispatchBlocks(WorkQueue *queue, uint8_t *key, size_t keyLen)
 
     }
 
+    free(pendingBlocks);
     free(rotatedKey);
 
     // Signal queue->finished = 1 and broadcast to all waiting threads
@@ -211,4 +224,12 @@ void writeBlock(Block *block)
     pthread_cond_destroy(&block->ready);
 
     free(block);
+}
+
+void isBlockDone(Block *block)
+{
+    pthread_mutex_lock(&block->lock);
+    int done = block->done;
+    pthread_mutex_unlock(&block->lock);
+    return done;
 }
