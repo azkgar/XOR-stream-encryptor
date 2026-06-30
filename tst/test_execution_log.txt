@@ -1,3 +1,42 @@
 gcc -Wall -Wextra -std=c99 -Iinclude -c src/main.c -o src/main.o
 gcc -Wall -Wextra -std=c99 -Iinclude -c src/crypto.c -o src/crypto.o
 gcc -Wall -Wextra -std=c99 -Iinclude -c src/queue.c -o src/queue.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/utils.c -o src/utils.o
+gcc src/main.o src/crypto.o src/queue.o src/utils.o -o encryptUtil -lpthread
+=======================================================
+        STARTING ENCRYPTUTIL INTEGRATION TESTS         
+=======================================================
+Building production target...
+rm -f src/main.o src/crypto.o src/queue.o src/utils.o encryptUtil
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/main.c -o src/main.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/crypto.c -o src/crypto.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/queue.c -o src/queue.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/utils.c -o src/utils.o
+gcc src/main.o src/crypto.o src/queue.o src/utils.o -o encryptUtil -lpthread
+Test 1: Verification of XOR symmetry... PASSED
+Test 2: Multi-threaded processing of a 10MB file... PASSED
+Building with AddressSanitizer...
+/Applications/Xcode.app/Contents/Developer/usr/bin/make clean
+rm -f src/main.o src/crypto.o src/queue.o src/utils.o encryptUtil
+/Applications/Xcode.app/Contents/Developer/usr/bin/make encryptUtil CFLAGS="-Wall -Wextra -std=c99 -Iinclude -g -fsanitize=address" LDFLAGS="-lpthread -fsanitize=address"
+gcc -Wall -Wextra -std=c99 -Iinclude -g -fsanitize=address -c src/main.c -o src/main.o
+gcc -Wall -Wextra -std=c99 -Iinclude -g -fsanitize=address -c src/crypto.c -o src/crypto.o
+gcc -Wall -Wextra -std=c99 -Iinclude -g -fsanitize=address -c src/queue.c -o src/queue.o
+gcc -Wall -Wextra -std=c99 -Iinclude -g -fsanitize=address -c src/utils.c -o src/utils.o
+gcc src/main.o src/crypto.o src/queue.o src/utils.o -o encryptUtil -lpthread -fsanitize=address
+Test 3: Checking for memory leaks and buffer overflows... PASSED (No ASan violations flagged)
+Building with ThreadSanitizer...
+/Applications/Xcode.app/Contents/Developer/usr/bin/make clean
+rm -f src/main.o src/crypto.o src/queue.o src/utils.o encryptUtil
+/Applications/Xcode.app/Contents/Developer/usr/bin/make encryptUtil CFLAGS="-Wall -Wextra -std=c99 -Iinclude -g -fsanitize=thread" LDFLAGS="-lpthread -fsanitize=thread"
+gcc -Wall -Wextra -std=c99 -Iinclude -g -fsanitize=thread -c src/main.c -o src/main.o
+gcc -Wall -Wextra -std=c99 -Iinclude -g -fsanitize=thread -c src/crypto.c -o src/crypto.o
+gcc -Wall -Wextra -std=c99 -Iinclude -g -fsanitize=thread -c src/queue.c -o src/queue.o
+gcc -Wall -Wextra -std=c99 -Iinclude -g -fsanitize=thread -c src/utils.c -o src/utils.o
+gcc src/main.o src/crypto.o src/queue.o src/utils.o -o encryptUtil -lpthread -fsanitize=thread
+Test 4: Checking for data races and lock deadlocks... PASSED (No TSan violations flagged)
+Cleaning up artifacts...
+rm -f src/main.o src/crypto.o src/queue.o src/utils.o encryptUtil
+=======================================================
+        ALL TESTS PASSED SUCCESSFULLY!                 
+=======================================================

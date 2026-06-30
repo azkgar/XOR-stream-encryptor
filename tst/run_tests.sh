@@ -34,7 +34,7 @@ dd if=/dev/urandom of="$KEY_FILE" bs=1 count=1024 2>/dev/null
 # Test Case 1: Functional Correctness (Identity Property)
 # ---------------------------------------------------------------------------
 echo -n "Test 1: Verification of XOR symmetry... "
-echo "Apple AirPods, AirTags, and visionOS architecture!" > "$INPUT_FILE"
+echo "Apple AirPods, AirTags, and visionOS architecture! :)" > "$INPUT_FILE"
 
 # Encrypt and decrypt with 4 threads using root binary
 "$BINARY" -n 4 -k "$KEY_FILE" < "$INPUT_FILE" > "$ENCRYPTED_FILE"

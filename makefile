@@ -38,21 +38,17 @@ $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # ---------------------------------------------------------------------------
-# Sanitize / Debug Targets (Using recursive make to prevent race conditions)
+# Sanitize / Debug Targets (Using explicit flag injection for sub-makes)
 # ---------------------------------------------------------------------------
 # ThreadSanitizer for data races
-debug: CFLAGS += -g -fsanitize=thread
-debug: LDFLAGS += -fsanitize=thread
 debug:
 	$(MAKE) clean
-	$(MAKE) $(TARGET)
+	$(MAKE) $(TARGET) CFLAGS="$(CFLAGS) -g -fsanitize=thread" LDFLAGS="$(LDFLAGS) -fsanitize=thread"
 
 # AddressSanitizer for memory leaks and buffer overflows
-asan: CFLAGS += -g -fsanitize=address
-asan: LDFLAGS += -fsanitize=address
 asan:
 	$(MAKE) clean
-	$(MAKE) $(TARGET)
+	$(MAKE) $(TARGET) CFLAGS="$(CFLAGS) -g -fsanitize=address" LDFLAGS="$(LDFLAGS) -fsanitize=address"
 
 # ---------------------------------------------------------------------------
 # Clean target
