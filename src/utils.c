@@ -56,11 +56,11 @@ void *workerThread(void *arg)
         // Decrease the count
         queue->count--;
 
+        // Signal that the queue is not full
+        pthread_cond_signal(&queue->notFull);
+
         // Release the queue mutex
         pthread_mutex_unlock(&queue->lock);
-
-        // Signal that the queue is not full
-        pthread_cond_wait(&queue->notFull, &queue->lock);
 
         // XOR the block against its prerotated key
         for(size_t idx = 0; idx < block->dataLen; idx++)
