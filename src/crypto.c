@@ -15,7 +15,7 @@ void rotateKeyLeft(uint8_t *key, size_t keyLen)
     uint8_t overflowBit;
 
     // Get bit that wraps around from the first byte to the last byte
-    overflowBit = (key[0] >> 7u) & ONE_BIT_MASK;
+    overflowBit = (key[0] >> 7u) & LSB_MASK;
 
     // Shift all bytes one bit to the left
     for(size_t idx = 0; idx < keyLen - 1; idx++)
@@ -24,17 +24,17 @@ void rotateKeyLeft(uint8_t *key, size_t keyLen)
         uint8_t nextByteFirstBit;
 
         // Get first byte on next byte for shift
-        nextByteFirstBit = (key[idx + 1] >> 7u) & ONE_BIT_MASK;
+        nextByteFirstBit = (key[idx + 1] >> 7u) & LSB_MASK;
 
-        // Shift current byte
-        key[idx] <<= SHIFT_LEFT;
+        // Rotate key by BIT_KEY_ROTATION bits to the left for the current byte
+        key[idx] <<= BIT_KEY_ROTATION ;
 
         // Set last bit to the stored one
         key[idx] |= nextByteFirstBit;
     }
 
-    // Shift last byte
-    key[keyLen - 1] <<= SHIFT_LEFT;
+    // Rotate key by BIT_KEY_ROTATION bits to the left for the last byte
+    key[keyLen - 1] <<= BIT_KEY_ROTATION ;
 
     // Set last bit that wraps up from the 1st byte
     key[keyLen - 1] |= overflowBit;
