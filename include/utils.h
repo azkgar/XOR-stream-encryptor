@@ -35,9 +35,9 @@
 
 /**
  * @brief Worker thread function that processes blocks from the work queue.
- * @param arg Pointer to the work queue.
+ * @param context Pointer to the context.
  */
-void *workerThread(void *arg);
+void *workerThread(void *context);
 
 /**
  * @brief Processes the standard input stream, reading data in blocks, rotating the key, and pushing blocks into the work queue.
