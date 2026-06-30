@@ -94,3 +94,87 @@ void workQueuePush(WorkQueue *queue, Block *block)
     // Unlock the queue mutex
     pthread_mutex_unlock(&queue->lock);
 }
+
+void dispatchBlocks(WorkQueue *queue, uint8_t *key, size_t keyLen)
+{
+    uint8_t *rotatedKey = (uint8_t *)malloc(keyLen);
+    if(rotatedKey == NULL)
+    {
+        fprintf(stderr, "Error: failed to allocate memory for rotated key\n");
+        exit(1);
+    }
+
+    memcpy(rotatedKey, key, keyLen);
+
+    size_t blockIdx = 0;
+
+    while(1)
+    {
+        // malloc a buffer of keyLen bytes for block data
+        Block *block = (Block *)malloc(sizeof(Block));
+        if(block == NULL)
+        {
+            fprintf(stderr, 
+                    "Error: failed to allocate memory for new block\n");
+            exit(1);
+        }
+
+        // fread up to keyLen bytes from stdin into the block's data
+        block->data = (uint8_t *)malloc(keyLen);
+        if(block->data == NULL)
+        {
+            fprintf(stderr, 
+                    "Error: failed to allocate memory for block data\n");
+            exit(1);
+        }
+
+        size_t bytesRead = fread(block->data, 1, keyLen, stdin);
+
+        if(bytesRead == 0)
+        {
+            // No more data to read, free the block and break the loop
+            free(block->data);
+            free(block);
+            break;
+        }
+
+        // build a block struct
+        block->dataLen = bytesRead;
+        block->key = (uint8_t *)malloc(keyLen);
+        if(block->key == NULL)
+        {
+            fprintf(stderr, 
+                    "Error: failed to allocate memory for block key\n");
+            exit(1);
+        }
+        memcpy(block->key, rotatedKey, keyLen);
+        block->output = (uint8_t *)malloc(keyLen);
+        if(block->output == NULL)
+        {
+            fprintf(stderr, 
+                    "Error: failed to allocate memory for block output\n");
+            exit(1);
+        }
+        block->keyLen = keyLen;
+        block->blockIdx = blockIdx;
+        block->done = 0;
+
+        // push block into queue
+        workQueuePush(queue, block);
+
+        // rotate key for next block
+        rotateKeyLeft(rotatedKey, keyLen);
+
+        // move block index to the next block
+        blockIdx++;
+
+    }
+
+    free(rotatedKey);
+
+    // Signal queue->finished = 1 and broadcast to all waiting threads
+    pthread_mutex_lock(&queue->lock);
+    queue->finished = 1;
+    pthread_cond_broadcast(&queue->notEmpty);
+    pthread_mutex_unlock(&queue->lock);
+}
