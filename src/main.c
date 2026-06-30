@@ -1,8 +1,9 @@
 /**********************************************************************************************
  * @file main.c
- * @brief 
- * 
- * This file 
+ * @brief Entry point for the XOR stream encryption utility.
+ *
+ * This file parses command-line arguments, loads the key file, sets up the work queue and 
+ * worker threads, and orchestrates encryption of stdin to stdout.
  * 
  * @author Azkary Garcia
  * @date June 30th, 2026
@@ -12,6 +13,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
+#include "crypto.h"
+#include "queue.h"
+#include "utils.h"
 
 
 /**
@@ -19,16 +24,20 @@
  */
 int main(int argc, char *argv[])
 {
-    // Variable for number of threads
+    // Local variable for number of threads
     int threads;
-    // Variable for key file
+    // Local variable for key file
     char *keyFile;
-    // Variable for catching the command prompt read result
+    // Local variable for catching the command prompt read result
     int opt;
-    // Variable for key length
+    // Local variable for key length
     size_t keyLen;
-    // Variable for key buffer
+    // Local variable for key buffer
     uint8_t *key;
+    // Local variable to store key from file
+    FILE *keyFilePtr;
+    // Local variable to store the amount of bytes read
+    size_t bytesRead;
 
     // Initialize threads to 1 as default value
     threads = 1;
@@ -72,7 +81,7 @@ int main(int argc, char *argv[])
     }
 
     // Load key from file
-    FILE *keyFilePtr = fopen(keyFile, "rb");
+    keyFilePtr = fopen(keyFile, "rb");
 
     // Check if file opened successfully
     if(keyFilePtr == NULL)
@@ -110,7 +119,7 @@ int main(int argc, char *argv[])
     }
 
     // Read key from file
-    size_t bytesRead = fread(key, 1, keyLen, keyFilePtr);
+    bytesRead = fread(key, 1, keyLen, keyFilePtr);
     if (bytesRead != keyLen)
     {
         fprintf(stderr,
@@ -165,3 +174,5 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
+/* TODO: Fix comments and refactor main so it's more readable */
