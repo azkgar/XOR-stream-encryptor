@@ -30,10 +30,11 @@ void workQueueInit(WorkQueue *queue, size_t capacity)
         exit(1);
     }
 
-    // Initialize queue's head, tail, capacity, and finished flag
+    // Initialize queue's head, tail, capacity, count, and finished flag
     queue->head = 0;
     queue->tail = 0;
     queue->capacity = capacity;
+    queue->count = 0;
     queue->finished = 0;
 
     // Initialize queue mutex and condition variables 
@@ -70,7 +71,7 @@ void workQueuePush(WorkQueue *queue, Block *block)
     pthread_mutex_lock(&queue->lock);
 
     // Wait until there is space in the queue to add a new block
-    while((queue->tail + 1) % queue->capacity == queue->head)
+    while(queue->count == queue->capacity)
     {
         pthread_cond_wait(&queue->notFull, &queue->lock);
     }
@@ -79,6 +80,8 @@ void workQueuePush(WorkQueue *queue, Block *block)
     queue->blocks[queue->tail] = block;
     // Update the tail index to the next position
     queue->tail = (queue->tail + 1) % queue->capacity;
+    // Increase count
+    queue->count++;
     
     // Signal that the queue is not empty
     pthread_cond_signal(&queue->notEmpty);

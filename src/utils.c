@@ -35,13 +35,13 @@ void *workerThread(void *arg)
         pthread_mutex_lock(&queue->lock);
 
         // Wait until there is a block in the queue or the queue is finished
-        while(queue->head == queue->tail && !queue->finished)
+        while(queue->count == 0 && !queue->finished)
         {
             pthread_cond_wait(&queue->notEmpty, &queue->lock);
         }
 
         // If the queue is finished and empty, exit the loop
-        if(queue->head == queue->tail && queue->finished)
+        if(queue->count == 0 && queue->finished)
         {
             pthread_mutex_unlock(&queue->lock);
             break;
@@ -52,6 +52,9 @@ void *workerThread(void *arg)
 
         // Move the head pointer to the next position
         queue->head = (queue->head + 1) % queue->capacity;
+
+        // Decrease the count
+        queue->count--;
 
         // Release the queue mutex
         pthread_mutex_unlock(&queue->lock);

@@ -49,6 +49,7 @@ typedef struct WorkQueue {
     size_t              head;           // Index of the next block to be processed
     size_t              tail;           // Index of the next free slot in the queue
     size_t              capacity;       // Maximum number of blocks the queue can hold
+    size_t              count;          // Tracks slots used
     int                 finished;       // Flag: 1 when all blocks have been processed, 0 otherwise
     pthread_mutex_t     lock;           // Mutex for synchronizing access to the queue
     pthread_cond_t      notEmpty;       // Condition variable to signal when queue is not empty
