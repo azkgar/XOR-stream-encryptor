@@ -20,10 +20,6 @@
 /* ======================================================================================= */
 /*                             Macro definitions and constants                             */
 /* ======================================================================================= */
-/** @brief The number of bits to rotate the key */
-#define     BIT_KEY_ROTATION        1u    
-/** @brief A mask for extracting the least significant bit */
-#define     LSB_MASK                0x01u
 
 /* ======================================================================================= */
 /*                           Data type, enum & struct definitions                          */
