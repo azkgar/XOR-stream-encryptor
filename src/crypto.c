@@ -17,7 +17,6 @@
  * @param key Pointer to the key.
  * @param keyLen Length of the key.
 *********************************************************************************************/
-
 void rotateKeyLeft(uint8_t *key, size_t keyLen)
 {
     // Variable to store the bit that wraps around from the first byte to the last byte
