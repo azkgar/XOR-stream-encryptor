@@ -25,6 +25,16 @@ void workQueueInit(WorkQueue *queue, size_t capacity)
     pthread_cond_init(&queue->notFull, NULL);
 }
 
+void workQueueDestroy(WorkQueue *queue)
+{
+    // Free the memory allocated for the blocks queue
+    free(queue->blocks);
+    // Destroy the mutex and condition variables
+    pthread_mutex_destroy(&queue->lock);
+    pthread_cond_destroy(&queue->notEmpty);
+    pthread_cond_destroy(&queue->notFull);
+}
+
 void *workerThread(void *arg)
 {
     WorkQueue *queue = (WorkQueue *)arg;
@@ -63,4 +73,24 @@ void *workerThread(void *arg)
     }
 
     return NULL;
+}
+
+void workQueuePush(WorkQueue *queue, Block *block)
+{
+    // Lock the queue mutex to ensure thread-safe access
+    pthread_mutex_lock(&queue->lock);
+
+    // Wait until there is space in the queue to add a new block
+    while((queue->tail + 1) % queue->capacity == queue->head)
+    {
+        pthread_cond_wait(&queue->notFull, &queue->lock);
+    }
+    // Add the block to the queue
+    queue->blocks[queue->tail] = block;
+    // Update the tail index to the next position
+    queue->tail = (queue->tail + 1) % queue->capacity;
+    // Signal that the queue is not empty
+    pthread_cond_signal(&queue->notEmpty);
+    // Unlock the queue mutex
+    pthread_mutex_unlock(&queue->lock);
 }
