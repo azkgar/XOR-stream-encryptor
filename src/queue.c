@@ -178,3 +178,37 @@ void dispatchBlocks(WorkQueue *queue, uint8_t *key, size_t keyLen)
     pthread_cond_broadcast(&queue->notEmpty);
     pthread_mutex_unlock(&queue->lock);
 }
+
+void writeBlock(Block *block)
+{
+    // Wait for the block to be processed
+    pthread_mutex_lock(&block->lock);
+    
+    while(!block->done)
+    {
+        pthread_cond_wait(&block->ready, &block->lock);
+    }
+
+    // Write the block's output to stdout
+    size_t bytesWritten = fwrite(block->output, 1, block->dataLen, stdout);
+    pthread_mutex_unlock(&block->lock);
+
+    if(bytesWritten != block->dataLen)
+    {
+        fprintf(stderr, 
+                "Error: failed to write all bytes for block %lu\n", 
+                (unsigned long)block->blockIdx);
+        exit(1);
+    }
+
+    // Free block
+    free(block->data);
+    free(block->key);
+    free(block->output);
+
+    // Destroy the mutex and condition variable for the block
+    pthread_mutex_destroy(&block->lock);
+    pthread_cond_destroy(&block->ready);
+
+    free(block);
+}
