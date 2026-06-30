@@ -171,6 +171,12 @@ void processStdin(WorkQueue *queue, uint8_t *key, size_t keyLen)
         block->blockIdx = blockIdx;
         block->done = 0;
 
+        pthread_mutex_init(&block->lock, NULL);
+        pthread_cond_init(&block->ready, NULL);
+
+        // store pendingBlocks[blockIdx % capacity] = block;
+        pendingBlocks[blockIdx % capacity] = block;
+
         // push block into queue
         workQueuePush(queue, block);
 
@@ -180,6 +186,35 @@ void processStdin(WorkQueue *queue, uint8_t *key, size_t keyLen)
         // move block index to the next block
         blockIdx++;
 
+        // 8. NON-BLOCKING drain
+        while(pendingBlocks[nextToWrite % capacity] != NULL)
+        {
+            Block *nextBlock = pendingBlocks[nextToWrite % capacity];
+            pthread_mutex_lock(&nextBlock->lock);
+            int done = nextBlock->done;
+            pthread_mutex_unlock(&nextBlock->lock);
+
+            if(done)
+            {
+                writeBlock(nextBlock);
+                pendingBlocks[nextToWrite % capacity] = NULL;
+                nextToWrite++;
+            }
+            else
+            {
+                break; // The next block is not done yet, exit the loop
+            }
+        }
+
+    }
+
+    // Blocking drain: write everything still pending
+    while (nextToWrite < blockIdx)
+    {
+        Block *block = pendingBlocks[nextToWrite % capacity];
+        writeBlock(block);   // this BLOCKS until done — that's fine here
+        pendingBlocks[nextToWrite % capacity] = NULL;
+        nextToWrite++;
     }
 
     free(pendingBlocks);

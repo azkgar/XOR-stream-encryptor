@@ -77,6 +77,15 @@ int main(int argc, char *argv[])
     keyLen = (size_t)ftell(keyFilePtr);
     rewind(keyFilePtr);
 
+    if(keyLen == 0)
+    {
+        fprintf(stderr,
+            "Error: key file '%s' is empty\n",
+            keyFile);
+        fclose(keyFilePtr);
+        return 1;
+    }
+
     // Allocate memory for key
     key = (uint8_t *)malloc(keyLen * sizeof(uint8_t));
 
@@ -90,12 +99,57 @@ int main(int argc, char *argv[])
     }
 
     // Read key from file
-    fread(key, 1, keyLen, keyFilePtr);
+    size_t bytesRead = fread(key, 1, keyLen, keyFilePtr);
+    if (bytesRead != keyLen)
+    {
+        fprintf(stderr,
+            "Error: failed to read key from file '%s'\n",
+            keyFile);
+        fclose(keyFilePtr);
+        free(key);
+        return 1;
+    }
     fclose(keyFilePtr);
 
-    fprintf(stderr, "Threads: %d || Key Size: %zu bytes\n", threads, keyLen);
+    fprintf(stderr, 
+            "Threads: %d || Key Size: %zu bytes\n", 
+            threads,
+            keyLen);
+
+    WorkQueue queue;
+    workQueueInit(&queue, threads);
+
+    pthread_t *threadPool = (pthread_t *)malloc(sizeof(pthread_t) * threads);
+
+    if(threadPool == NULL)
+    {
+        fprintf(stderr, 
+                "Error: failed to allocate memory for thread pool\n");
+        exit(1);
+    }
+
+    for(int idx = 0; idx < threads; idx++)
+    {
+        int ret = pthread_create(&threadPool[idx], NULL, workerThread, &queue);
+        if(ret != 0)
+        {
+            fprintf(stderr, 
+                    "Error: failed to create thread %d\n", 
+                    idx);
+            exit(1);
+        }
+    }
+
+    processStdin(&queue, key, keyLen);
+
+    for(int idx = 0; idx < threads; idx++)
+    {
+        pthread_join(threadPool[idx], NULL);
+    }
 
     // Free memory
+    free(threadPool);
+    workQueueDestroy(&queue);
     free(key);
 
     return 0;
