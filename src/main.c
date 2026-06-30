@@ -9,6 +9,7 @@
  * @date June 30th, 2026
  * @version 1.0.0
 *********************************************************************************************/
+#define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
 #include <stdlib.h>
