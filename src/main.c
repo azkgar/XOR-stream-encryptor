@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <errno.h>
 #include "crypto.h"
 #include "queue.h"
 #include "utils.h"
@@ -117,8 +118,25 @@ static int parseArgs(int argCount, char *argValues[], int *threads, char **keyFi
         switch(parsedOption)
         {
             case 'n':
-                // Convert the thread count argument from string to integer
-                *threads = atoi(optarg);
+                // Local variable to hold the end pointer for strtol parse validation
+                char *endPtr;
+                // Local variable to hold the parsed thread count
+                long parsedThreads;
+
+                // strtol detects non-numeric input via endPtr and out of range via errno
+                errno = 0;
+                parsedThreads = strtol(optarg, &endPtr, 10);
+                
+                // Nothing was parsed, trailing non-numeric chars exist, or overflow
+                if(endPtr == optarg || *endPtr != '\0' || errno != 0)
+                {
+                    fprintf(stderr,
+                            "Error: invalid thread count '%s' — must be a positive integer\n",
+                            optarg);
+                    return 1;
+                }
+
+                *threads = (int)parsedThreads;
                 break;
             case 'k':
                 // Store the key file path

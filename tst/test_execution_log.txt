@@ -1,4 +1,7 @@
 gcc -Wall -Wextra -std=c99 -Iinclude -c src/main.c -o src/main.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/crypto.c -o src/crypto.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/queue.c -o src/queue.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/utils.c -o src/utils.o
 gcc src/main.o src/crypto.o src/queue.o src/utils.o -o encryptUtil -lpthread
 
 ========================================================================
