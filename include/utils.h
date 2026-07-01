@@ -3,7 +3,7 @@
  * @brief defines the structures and function prototypes for the utility functions.
  * 
  * @author Azkary Garcia
- * @date June 30th, 2026
+ * @date July 1st, 2026
  * @version 1.0.0
 *********************************************************************************************/
 
@@ -67,7 +67,5 @@ void drainPendingBlocks(Block **pendingBlocks, size_t capacity, size_t blockIdx,
  * @param keyLen Length of the key in bytes (also defines block size).
  */
 void processStdin(WorkQueue *queue, uint8_t *key, size_t keyLen);
-
-
 
 #endif /* UTILS_H */

@@ -3,7 +3,7 @@
  * @brief defines the structures and function prototypes for the bitwise rotation.
  * 
  * @author Azkary Garcia
- * @date June 30th, 2026
+ * @date July 1st, 2026
  * @version 1.0.0
 *********************************************************************************************/
 

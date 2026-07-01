@@ -5,11 +5,14 @@
  * This file implements the functions declared in queue.h.
  * 
  * @author Azkary Garcia
- * @date June 30th, 2026
+ * @date July 1st, 2026
  * @version 1.0.0
 *********************************************************************************************/
 
+#define _POSIX_C_SOURCE 200809L
 #include "queue.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 /**********************************************************************************************
  * @name workQueueInit
