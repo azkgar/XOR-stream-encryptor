@@ -146,7 +146,9 @@ int main(int argc, char *argv[])
     {
         fprintf(stderr, 
                 "Error: failed to allocate memory for thread pool\n");
-        exit(1);
+        workQueueDestroy(&queue);
+        free(key);
+        return 1;
     }
 
     for(int idx = 0; idx < threads; idx++)
@@ -157,7 +159,20 @@ int main(int argc, char *argv[])
             fprintf(stderr, 
                     "Error: failed to create thread %d\n", 
                     idx);
-            exit(1);
+            pthread_mutex_lock(&queue.lock);
+            queue.finished = 1;
+            pthread_cond_bradcast(&queue.notEmpty);
+            pthread_mutex_unlock(&queue.lock);
+
+            for(int j = 0; j < idx; j++)
+            {
+                pthread_join(threadPool[j], NULL);
+            }
+            free(threadPool);
+            workQueueDestroy(&queue);
+            free(key);
+            
+            return 1;
         }
     }
 
