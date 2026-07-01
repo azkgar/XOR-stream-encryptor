@@ -1,0 +1,62 @@
+============================================================
+ encryptUtil — Test Execution Log
+ Wed Jul  1 13:38:17 EDT 2026
+============================================================
+
+--- CLI / Error Handling ---
+
+[PASS] CLI-01 — No arguments exits with error
+[PASS] CLI-02 — -k flag is required
+[PASS] CLI-03 — Non-existent key file exits with error
+[PASS] CLI-04 — Empty key file exits with error
+[PASS] CLI-05 — Thread count of zero exits with error
+[PASS] CLI-06 — Negative thread count exits with error
+[PASS] CLI-07 — Non-numeric thread count exits with error
+[PASS] CLI-08 — -n flag with no value exits with error
+[PASS] CLI-09 — Unreadable key file exits with error
+[PASS] CLI-10 — n=1 is accepted as a valid thread count
+
+--- Correctness: Known Values ---
+
+[PASS] COR-01 — 1-byte key 0x0F encrypts ABC to known bytes
+[PASS] COR-02 — Partial block: 2-byte input with 4-byte key produces 2 bytes
+[PASS] COR-03 — Exact block: 4-byte input with 4-byte key produces 4 bytes
+[PASS] COR-04 — Multi-block: 10-byte input with 4-byte key produces 10 bytes
+[PASS] COR-05 — 1024-byte binary stream with 4-byte key produces 1024 bytes
+[PASS] COR-06 — Key larger than input: 16-byte key with 1-byte input produces 1 byte
+[PASS] COR-07 — Non-power-of-two key: 3-byte key with 10-byte input produces 10 bytes
+[PASS] COR-08 — Non-power-of-two key: 7-byte key with 10-byte input produces 10 bytes
+
+--- Round-trip Encryption ---
+
+[PASS] RT-key_1byte — Round-trip with 1byte key restores original data
+[PASS] RT-key_4byte — Round-trip with 4byte key restores original data
+[PASS] RT-key_16byte — Round-trip with 16byte key restores original data
+
+--- Edge Cases ---
+
+[PASS] EDGE-01 — Empty input produces empty output
+[PASS] EDGE-02 — Single byte input produces single byte output
+[PASS] EDGE-03 — 256,000-byte input with 1-byte key produces 256,000 bytes
+[PASS] EDGE-04 — Key rotation round-trip: 16-byte key over 1024-byte binary stream
+[PASS] EDGE-05 — More threads than blocks does not deadlock
+
+--- Multi-thread Determinism ---
+
+[WARN] DET reference run (n=1) failed or timed out — skipping determinism tests
+[WARN] One or more determinism tests timed out — remaining DET tests skipped
+
+--- Stress / Large Input ---
+
+[FAIL] STR-n1 — 256KB input with n=1 threads preserves byte count
+       Reason: Expected   262144 bytes, got        0
+[FAIL] STR-n8 — 256KB input with n=8 threads preserves byte count
+       Reason: Expected   262144 bytes, got        0
+[FAIL] STR-n16 — 256KB input with n=16 threads preserves byte count
+       Reason: Expected   262144 bytes, got        0
+[FAIL] STR-RT — High-concurrency round-trip: 256KB with n=8 and 16-byte key
+       Reason: Decrypted output does not match original
+
+============================================================
+ Results: 26 passed, 4 failed, 30 total
+============================================================
