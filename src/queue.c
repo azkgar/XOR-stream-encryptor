@@ -98,6 +98,10 @@ void writeBlock(Block *block)
 {
     // Local variable to store the number of bytes written
     size_t bytesWritten;
+    // Local variable to hold output pointer after lock is released
+    uint8_t *output;
+    // Local variable to hold data length after lock is released
+    size_t dataLen;
 
     // Lock the block mutex to ensure thread-safe access
     pthread_mutex_lock(&block->lock);
@@ -108,14 +112,15 @@ void writeBlock(Block *block)
         pthread_cond_wait(&block->ready, &block->lock);
     }
 
-    // Write the processed block to stdout and get the number of bytes written
-    bytesWritten = fwrite(block->output, 1, block->dataLen, stdout);
-
-    // Unlock the block mutex
+    output  = block->output;
+    dataLen = block->dataLen;
     pthread_mutex_unlock(&block->lock);
 
+    // Write the processed block to stdout and get the number of bytes written
+    bytesWritten = fwrite(output, 1, dataLen, stdout);
+
     // Check if the write operation was successful
-    if(bytesWritten != block->dataLen)
+    if(bytesWritten != dataLen)
     {
         fprintf(stderr, 
                 "Error: failed to write all bytes for block %lu\n", 
