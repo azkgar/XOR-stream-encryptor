@@ -84,155 +84,182 @@ void *workerThread(void *context)
 }
 
 /**********************************************************************************************
+ * @name createBlock
+ * @brief Allocates and initializes a Block struct with data read from stdin.
+ * @param keyLen  Size of the key in bytes (also the block size).
+ * @param key     Pointer to the rotated key for this block.
+ * @param blockIdx Index of this block in the input stream.
+ * @return Pointer to a fully initialized Block, or NULL on EOF (0 bytes read).
+ *         Exits on allocation failure.
+*********************************************************************************************/
+Block *createBlock(size_t keyLen, uint8_t *key, size_t blockIdx)
+{
+    // Local variable to hold the new block pointer
+    Block *block;
+    // Local variable to hold bytes read from stdin
+    size_t bytesRead;
+
+    // Allocate block struct
+    block = (Block *)malloc(sizeof(Block));
+    if(block == NULL)
+    {
+        fprintf(stderr, "Error: failed to allocate memory for new block\n");
+        exit(1);
+    }
+
+    // Allocate data buffer (holds raw bytes read from stdin)
+    block->data = (uint8_t *)malloc(keyLen);
+    if(block->data == NULL)
+    {
+        fprintf(stderr, "Error: failed to allocate memory for block data\n");
+        exit(1);
+    }
+
+    // Read up to keyLen bytes from stdin into data buffer
+    bytesRead = fread(block->data, 1, keyLen, stdin);
+
+    // End of frame, no data to process, discard the pre-allocated shell and signal caller
+    if(bytesRead == 0)
+    {
+        free(block->data);
+        free(block);
+        return NULL;
+    }
+
+    // Fill in block metadata
+    block->dataLen  = bytesRead;
+    block->keyLen   = keyLen;
+    block->blockIdx = blockIdx;
+    block->done     = 0;
+
+    // Allocate and snapshot the pre-rotated key for this block
+    block->key = (uint8_t *)malloc(keyLen);
+    if(block->key == NULL)
+    {
+        fprintf(stderr, "Error: failed to allocate memory for block key\n");
+        exit(1);
+    }
+    memcpy(block->key, key, keyLen);
+
+    // Allocate output buffer (worker writes XOR result here)
+    block->output = (uint8_t *)malloc(keyLen);
+    if(block->output == NULL)
+    {
+        fprintf(stderr, "Error: failed to allocate memory for block output\n");
+        exit(1);
+    }
+
+    // Initialize block mutex and condition variable
+    pthread_mutex_init(&block->lock, NULL);
+    pthread_cond_init(&block->ready, NULL);
+
+    return block;
+}
+
+/**********************************************************************************************
+ * @name drainPendingBlocks
+ * @brief Blocks until the pendingBlocks slot for blockIdx is free, writing
+ *        completed blocks to stdout in order along the way.
+ * @param pendingBlocks  Array of pointers to pending blocks.
+ * @param capacity       Size of pendingBlocks array.
+ * @param blockIdx       Index of the slot we need to free up.
+ * @param nextToWrite    Pointer to the index of the next block to write.
+*********************************************************************************************/
+void drainPendingBlocks(Block **pendingBlocks, size_t capacity, size_t blockIdx, size_t *nextToWrite)
+{
+    // Local variable to hold the block being drained
+    Block *block;
+
+    // Loop until the destination slot is free (NULL means safe to reuse)
+    while(pendingBlocks[blockIdx % capacity] != NULL)
+    {
+        // Get the next block that needs to be written to stdout
+        block = pendingBlocks[*nextToWrite % capacity];
+
+        // Block until this block is done, write it, free all resources
+        writeBlock(block);
+
+        // Clear the slot and advance the write index
+        pendingBlocks[*nextToWrite % capacity] = NULL;
+        (*nextToWrite)++;
+    }
+}
+
+/**********************************************************************************************
  * @name processStdin
- * @brief Processes input from stdin and manages the work queue.
- * @param queue Pointer to the work queue.
- * @param key Pointer to the key.
- * @param keyLen Length of the key.
+ * @brief Reads stdin in blocks, dispatches to worker threads,
+ *        and writes encrypted output to stdout in order.
+ * @param queue   Pointer to the shared work queue.
+ * @param key     Pointer to the original encryption key.
+ * @param keyLen  Length of the key in bytes (also defines block size).
 *********************************************************************************************/
 void processStdin(WorkQueue *queue, uint8_t *key, size_t keyLen)
 {
-    // Local variable to hold the capacity of the queue
+    // Local variable to hold the queue capacity (also pendingBlocks size)
     size_t capacity;
-    // Local variable to hold the array of pending blocks
+    // Local variable to hold the array of block pointers
     Block **pendingBlocks;
-    // Local variable to hold the rotated key
+    // Local variable to hold the rolling key (rotated once per block)
     uint8_t *rotatedKey;
-    // Local variable to hold the current block index
+    // Local variable to hold the index of the next block to dispatch
     size_t blockIdx;
-    // Local variable to hold the index of the next block to write
+    // Local variable to hold the index of the next block to write to stdout
     size_t nextToWrite;
-    // Local variable to hold the block pointer
+    // Local variable to hold each newly created block
     Block *block;
-    // Local variable to hold the number of bytes read from stdin
-    size_t bytesRead;
-    // Local variable used in mandatory slot-drain loop
-    Block *nextBlock;
 
     // Get the capacity of the queue
     capacity = queue->capacity;
 
-    // Allocate memory for the array of pending blocks
+    // Allocate and zero-initialize the pending block tracking array
     pendingBlocks = (Block **)calloc(capacity, sizeof(Block *));
-
-    // Check if allocation was successful
     if(pendingBlocks == NULL)
     {
-        fprintf(stderr,
-                "Error: failed to allocate memory for pending blocks\n");
+        fprintf(stderr, "Error: failed to allocate memory for pending blocks\n");
         exit(1);
     }
 
-    // Allocate memory for the rotated key
+    // Allocate and initialize the rolling key from the original key
     rotatedKey = (uint8_t *)malloc(keyLen);
-
-    // Check if allocation was successful
     if(rotatedKey == NULL)
     {
         fprintf(stderr, "Error: failed to allocate memory for rotated key\n");
         exit(1);
     }
-
-    // Copy the original key into the rotated key buffer
     memcpy(rotatedKey, key, keyLen);
 
-    // Initialize block index and next-to-write index
+    // Initialize dispatch and write indices
     blockIdx    = 0;
     nextToWrite = 0;
 
-    // Main loop: read one block at a time from stdin and dispatch to workers
+    // Main dispatch loop: read one block at a time and hand off to workers
     while(1)
     {
-        // Allocate block struct
-        block = (Block *)malloc(sizeof(Block));
-
-        // Check if allocation was successful
+        // Read next block from stdin using the current rolling key snapshot
+        // Returns NULL on end of frame, nothing left to process
+        block = createBlock(keyLen, rotatedKey, blockIdx);
         if(block == NULL)
         {
-            fprintf(stderr,
-                    "Error: failed to allocate memory for new block\n");
-            exit(1);
-        }
-
-        // Allocate block data buffer
-        block->data = (uint8_t *)malloc(keyLen);
-
-        // Check if allocation was successful
-        if(block->data == NULL)
-        {
-            fprintf(stderr,
-                    "Error: failed to allocate memory for block data\n");
-            exit(1);
-        }
-
-        // Read up to keyLen bytes from stdin
-        bytesRead = fread(block->data, 1, keyLen, stdin);
-        
-        // Nothing to process if no bytes read
-        if(bytesRead == 0)
-        {
-            free(block->data);
-            free(block);
             break;
         }
 
-        // Fill in block metadata
-        block->dataLen = bytesRead;
-        block->keyLen  = keyLen;
-        block->blockIdx = blockIdx;
-        block->done    = 0;
+        // Drain completed blocks until the slot for this block is free
+        drainPendingBlocks(pendingBlocks, capacity, blockIdx, &nextToWrite);
 
-        // Allocate and snapshot the current rotated key for this block
-        block->key = (uint8_t *)malloc(keyLen);
-        if(block->key == NULL)
-        {
-            fprintf(stderr,
-                    "Error: failed to allocate memory for block key\n");
-            exit(1);
-        }
-        memcpy(block->key, rotatedKey, keyLen);
-
-        // Allocate output buffer (worker writes XOR result here)
-        block->output = (uint8_t *)malloc(keyLen);
-
-        // Check if allocation was successful
-        if(block->output == NULL)
-        {
-            fprintf(stderr,
-                    "Error: failed to allocate memory for block output\n");
-            exit(1);
-        }
-
-        // Initialize per-block synchronization primitives
-        pthread_mutex_init(&block->lock, NULL);
-        pthread_cond_init(&block->ready, NULL);
-
-        // Mandatory drain: block until the pendingBlocks slot we're about
-        // to use is free. This guarantees we never overwrite a live Block*
-        // before it has been written to stdout and cleared, regardless of
-        // queue capacity or thread count.
-        while(pendingBlocks[blockIdx % capacity] != NULL)
-        {
-            nextBlock = pendingBlocks[nextToWrite % capacity];
-            writeBlock(nextBlock);
-            pendingBlocks[nextToWrite % capacity] = NULL;
-            nextToWrite++;
-        }
-
-        // Store block
+        // Store block in its tracking slot
         pendingBlocks[blockIdx % capacity] = block;
 
-        // Hand off to a worker thread
+        // Push block onto the queue for a worker thread to process
         workQueuePush(queue, block);
 
-        // Advance the rolling key for the next block
+        // Rotate the key for the next block
         rotateKeyLeft(rotatedKey, keyLen);
 
-        // Advance block index
+        // Advance the block index
         blockIdx++;
     }
 
-    // Final blocking drain: write any blocks still pending
+    // Final drain: write all remaining blocks to stdout in order
     while(nextToWrite < blockIdx)
     {
         block = pendingBlocks[nextToWrite % capacity];
@@ -241,19 +268,13 @@ void processStdin(WorkQueue *queue, uint8_t *key, size_t keyLen)
         nextToWrite++;
     }
 
-    // Cleanup local allocations
+    // Free local allocations
     free(pendingBlocks);
     free(rotatedKey);
 
-    // Signal that process is finished and queue is not empty
+    // Signal all worker threads that no more blocks will be pushed
     pthread_mutex_lock(&queue->lock);
     queue->finished = 1;
     pthread_cond_broadcast(&queue->notEmpty);
     pthread_mutex_unlock(&queue->lock);
 }
-
-
-/*
-TODO: think of a better param name than arg for workerThread. Maybe queuePtr or something like that.
-TODO: add comments to the blocking drain sections 
-*/

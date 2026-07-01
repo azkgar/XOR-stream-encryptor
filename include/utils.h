@@ -41,10 +41,30 @@
 void *workerThread(void *context);
 
 /**
- * @brief Processes the standard input stream, reading data in blocks, rotating the key, and pushing blocks into the work queue.
- * @param queue Pointer to the work queue where blocks will be pushed.
- * @param key Pointer to the initial key used for XOR operations.
- * @param keyLen Length of the key in bytes.
+ * @brief Allocates and initializes a Block struct with data read from stdin.
+ * @param keyLen Size of the key in bytes (also the block size).
+ * @param key PPointer to the rotated key for this block.
+ * @param blockIdx Index of this block in the input stream.
+ * @return Pointer to a fully initialized Block, or NULL on EOF (0 bytes read).
+ */
+Block *createBlock(size_t keyLen, uint8_t *key, size_t blockIdx);
+
+/**
+ * @brief Blocks until the pendingBlocks slot for blockIdx is free, writing
+ *        completed blocks to stdout in order along the way.
+ * @param pendingBlocks Array of pointers to pending blocks.
+ * @param capacity Size of pendingBlocks array.
+ * @param blockIdx Index of the slot we need to free up.
+ * @param nextToWrite Pointer to the index of the next block to write.
+ */
+void drainPendingBlocks(Block **pendingBlocks, size_t capacity, size_t blockIdx, size_t *nextToWrite);
+
+/**
+ * @brief Reads stdin in blocks, dispatches to worker threads,
+ *        and writes encrypted output to stdout in order.
+ * @param queue Pointer to the shared work queue.
+ * @param key Pointer to the original encryption key.
+ * @param keyLen Length of the key in bytes (also defines block size).
  */
 void processStdin(WorkQueue *queue, uint8_t *key, size_t keyLen);
 
