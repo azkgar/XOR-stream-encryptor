@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <errno.h>
+#include <limits.h>
 #include "crypto.h"
 #include "queue.h"
 #include "utils.h"
@@ -133,7 +134,7 @@ static int parseArgs(int argCount, char *argValues[], int *threads, char **keyFi
                 parsedThreads = strtol(optarg, &endPtr, 10);
 
                 // Reject if nothing was parsed, trailing non-numeric chars exist, or overflow
-                if(endPtr == optarg || *endPtr != '\0' || errno != 0)
+                if(endPtr == optarg || *endPtr != '\0' || errno != 0 || parsedThreads > INT_MAX)
                 {
                     fprintf(stderr,
                             "Error: invalid thread count '%s' — must be a positive integer\n",
@@ -200,7 +201,14 @@ static uint8_t *loadKey(const char *keyFilePath, size_t *keyLen)
     }
 
     // Seek to end to determine file size
-    fseek(keyFileHandle, 0, SEEK_END);
+    if(fseek(keyFileHandle, 0, SEEK_END) != 0)
+    {
+        fprintf(stderr,
+                "Error: could not seek in key file '%s'\n",
+                keyFilePath);
+        fclose(keyFileHandle);
+        return NULL;
+    }
 
     // Get size of key file
     fileSize = ftell(keyFileHandle);
