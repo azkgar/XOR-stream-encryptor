@@ -135,26 +135,3 @@ void writeBlock(Block *block)
     // Free the block memory
     free(block);
 }
-
-/**********************************************************************************************
- * @name isBlockDone
- * @brief Checks if the block is done processing.
- * @param block Pointer to the block.
- * @return 1 if the block is done, 0 otherwise.
-*********************************************************************************************/
-int isBlockDone(Block *block)
-{
-    // Local variable to store current status of the block
-    int done;
-
-    // Lock the block mutex to ensure thread-safe access
-    pthread_mutex_lock(&block->lock);
-
-    // Get current status of the block
-    done = block->done;
-
-    // Unlock the block mutex
-    pthread_mutex_unlock(&block->lock);
-
-    return done;
-}

@@ -228,6 +228,7 @@ void processStdin(WorkQueue *queue, uint8_t *key, size_t keyLen)
     if(rotatedKey == NULL)
     {
         fprintf(stderr, "Error: failed to allocate memory for rotated key\n");
+        free(pendingBlocks);
         exit(1);
     }
     memcpy(rotatedKey, key, keyLen);

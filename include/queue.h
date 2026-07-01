@@ -91,11 +91,4 @@ void workQueuePush(WorkQueue *queue, Block *block);
  */
 void writeBlock(Block *block);
 
-/**
- * @brief Checks if a block has been processed.
- * @param block Pointer to the Block structure to check.
- * @return 1 if the block is done, 0 otherwise.
- */
-int isBlockDone(Block *block);
-
 #endif /* QUEUE_H */
