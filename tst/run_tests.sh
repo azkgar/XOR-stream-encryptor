@@ -2,6 +2,18 @@
 #######################################################################################################
 # @file run_tests.sh
 # @brief Test suite for encryptUtil — XOR Stream Encryption Utility
+#
+# Usage:
+#   cd <project_root>
+#   bash tst/run_tests.sh
+#
+# The script creates temporary fixture files, runs all test cases, prints a detailed
+# report to stdout, and exits with code 0 if all tests pass or 1 if any fail.
+#
+# Compatible with Linux and macOS (no external dependencies beyond bash and python3).
+#
+# @author Azkary Garcia using Claude.ai
+# @date June 30th, 2026
 #######################################################################################################
 
 set -euo pipefail
@@ -75,12 +87,19 @@ open('$TMP/plain_empty.bin',   'wb').write(b'')
 open('$TMP/plain_large.bin',   'wb').write(os.urandom(256_000)) # Reduced to 256KB for performance
 "
 
+# ---------------------------------------------------------------------------
+# Test Report Header
+# ---------------------------------------------------------------------------
 echo ""
 echo "========================================================================"
 echo " encryptUtil — Test Report"
+echo " Binary : $BINARY"
+echo " Date   : $(date)"
 echo "========================================================================"
 
-# ── 1. CLI / Error Handling ─────────────────────────────────────────────
+# -----------------------------------------------------------------------
+# Section 1: CLI / Error Handling
+# -----------------------------------------------------------------------
 echo ""
 echo "── 1. CLI / Error Handling ─────────────────────────────────────────────"
 
@@ -99,7 +118,9 @@ run_test "CLI-04" "Empty key file exits non-zero" \
 run_test "CLI-05" "Thread count 0 exits non-zero" \
     "_timeout 5 bash -c \"echo | $BINARY -n 0 -k $TMP/key_1byte.bin\"; [ \$? -ne 0 ] && echo PASS || echo FAIL"
 
-# ── 2. Correctness: Known Values ────────────────────────────────────────
+# -----------------------------------------------------------------------
+# Section 2: Correctness — Known Values
+# -----------------------------------------------------------------------
 echo ""
 echo "── 2. Correctness: Known Values ────────────────────────────────────────"
 
@@ -118,7 +139,9 @@ run_test "COR-04" "Multi-block (10 bytes, 4-byte key) -> 10 bytes output" \
 run_test "COR-05" "Binary input -> 1024 bytes output" \
     "b=\$(_timeout 5 bash -c \"$BINARY -n 1 -k $TMP/key_4byte.bin < $TMP/plain_binary.bin | wc -c\"); [ \"\$b\" -eq 1024 ] && echo PASS || echo FAIL"
 
-# ── 3. Round-trip ───────────────────────────────────────────────────────
+# -----------------------------------------------------------------------
+# Section 3: Round-trip (XOR self-inverse)
+# -----------------------------------------------------------------------
 echo ""
 echo "── 3. Round-trip: encrypt(encrypt(x)) == x ─────────────────────────────"
 
@@ -127,7 +150,9 @@ for key in key_1byte key_4byte key_16byte; do
         "_timeout 10 bash -c \"$BINARY -n 4 -k $TMP/${key}.bin < $TMP/plain_large.bin | $BINARY -n 4 -k $TMP/${key}.bin > $TMP/rt_${key}.bin\" && cmp $TMP/plain_large.bin $TMP/rt_${key}.bin && echo PASS || echo FAIL"
 done
 
-# ── 4. Edge Cases ───────────────────────────────────────────────────────
+# -----------------------------------------------------------------------
+# Section 4: Edge Cases
+# -----------------------------------------------------------------------
 echo ""
 echo "── 4. Edge Cases ───────────────────────────────────────────────────────"
 
@@ -143,7 +168,9 @@ run_test "EDGE-03" "Correct large byte count constraint" \
 run_test "EDGE-04" "16-byte key multi-byte rotation" \
     "_timeout 5 bash -c \"$BINARY -n 4 -k $TMP/key_16byte.bin < $TMP/plain_binary.bin | $BINARY -n 4 -k $TMP/key_16byte.bin > $TMP/rt_16.bin\" && cmp $TMP/plain_binary.bin $TMP/rt_16.bin && echo PASS || echo FAIL"
 
-# ── 5. Multi-thread Determinism ───────────────────────────────────────
+# -----------------------------------------------------------------------
+# Section 5: Multi-thread Determinism
+# -----------------------------------------------------------------------
 echo ""
 echo "── 5. Multi-thread Determinism ─────────────────────────────────────────"
 
@@ -162,7 +189,9 @@ else
     done
 fi
 
-# ── 6. Stress / Large Input ─────────────────────────────────────────────
+# -----------------------------------------------------------------------
+# Section 6: Stress / Large Input
+# -----------------------------------------------------------------------
 echo ""
 echo "── 6. Stress / Large Input ─────────────────────────────────────────────"
 
@@ -174,8 +203,14 @@ done
 run_test "STR-RT" "Large round-trip, n=8, 16-byte key" \
     "_timeout 10 bash -c \"$BINARY -n 8 -k $TMP/key_16byte.bin < $TMP/plain_large.bin | $BINARY -n 8 -k $TMP/key_16byte.bin > $TMP/str_rt.bin\" && cmp $TMP/plain_large.bin $TMP/str_rt.bin && echo PASS || echo FAIL"
 
-# ── Cleanup & Summary ───────────────────────────────────────────────────
+# -----------------------------------------------------------------------
+# Cleanup
+# -----------------------------------------------------------------------
 rm -rf "$TMP"
+
+# -----------------------------------------------------------------------
+# Summary
+# -----------------------------------------------------------------------
 echo ""
 echo "========================================================================"
 printf " Results: %d passed, %d failed out of %d total\n" $PASS $FAIL $((PASS + FAIL))

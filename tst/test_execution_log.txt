@@ -1,1 +1,50 @@
 gcc -Wall -Wextra -std=c99 -Iinclude -c src/main.c -o src/main.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/crypto.c -o src/crypto.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/queue.c -o src/queue.o
+gcc -Wall -Wextra -std=c99 -Iinclude -c src/utils.c -o src/utils.o
+gcc src/main.o src/crypto.o src/queue.o src/utils.o -o encryptUtil -lpthread
+
+========================================================================
+ encryptUtil — Test Report
+========================================================================
+
+── 1. CLI / Error Handling ─────────────────────────────────────────────
+  [PASS] CLI-01     No arguments exits non-zero
+  [PASS] CLI-02     Missing -k flag exits non-zero
+  [PASS] CLI-03     Nonexistent key file exits non-zero
+  [PASS] CLI-04     Empty key file exits non-zero
+  [PASS] CLI-05     Thread count 0 exits non-zero
+
+── 2. Correctness: Known Values ────────────────────────────────────────
+  [PASS] COR-01     1-byte key, 'ABC' -> expected bytes 4e 5c 7f
+  [PASS] COR-02     Partial block (2 bytes, 4-byte key) -> 2 bytes output
+  [PASS] COR-03     Exact block (4 bytes, 4-byte key) -> 4 bytes output
+  [PASS] COR-04     Multi-block (10 bytes, 4-byte key) -> 10 bytes output
+  [PASS] COR-05     Binary input -> 1024 bytes output
+
+── 3. Round-trip: encrypt(encrypt(x)) == x ─────────────────────────────
+  [PASS] RT-key_1byte Round-trip with key_1byte (n=4)
+  [PASS] RT-key_4byte Round-trip with key_4byte (n=4)
+  [PASS] RT-key_16byte Round-trip with key_16byte (n=4)
+
+── 4. Edge Cases ───────────────────────────────────────────────────────
+  [PASS] EDGE-01    Empty stdin -> zero bytes output
+  [PASS] EDGE-02    Single byte input -> single byte output
+  [PASS] EDGE-03    Correct large byte count constraint
+  [PASS] EDGE-04    16-byte key multi-byte rotation
+
+── 5. Multi-thread Determinism ─────────────────────────────────────────
+  [PASS] DET-n2     n=1 and n=2 produce byte-identical output
+  [PASS] DET-n4     n=1 and n=4 produce byte-identical output
+  [PASS] DET-n8     n=1 and n=8 produce byte-identical output
+  [PASS] DET-n16    n=1 and n=16 produce byte-identical output
+
+── 6. Stress / Large Input ─────────────────────────────────────────────
+  [PASS] STR-n1     Large input, n=1: correct byte count
+  [PASS] STR-n8     Large input, n=8: correct byte count
+  [PASS] STR-n16    Large input, n=16: correct byte count
+  [PASS] STR-RT     Large round-trip, n=8, 16-byte key
+
+========================================================================
+ Results: 25 passed, 0 failed out of 25 total
+========================================================================
