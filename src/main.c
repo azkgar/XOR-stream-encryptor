@@ -6,7 +6,7 @@
  * worker threads, and orchestrates encryption of stdin to stdout.
  * 
  * @author Azkary Garcia
- * @date June 30th, 2026
+ * @date July 1st, 2026
  * @version 1.0.0
 *********************************************************************************************/
 #define _POSIX_C_SOURCE 200809L
@@ -198,6 +198,7 @@ uint8_t *loadKey(const char *keyFilePath, size_t *keyLen)
 
     // Read the key bytes into the buffer
     bytesRead = fread(keyBuffer, 1, *keyLen, keyFileHandle);
+    
     if(bytesRead != *keyLen)
     {
         fprintf(stderr, "Error: failed to read key from file '%s'\n", keyFilePath);

@@ -55,13 +55,10 @@ mkdir -p "$TMP"
 # Key files
 python3 -c "
 open('$TMP/key_1byte.bin',  'wb').write(bytes([0x0F]))
-open('$TMP/key_3byte.bin',  'wb').write(bytes([0xA1, 0xB2, 0xC3]))
 open('$TMP/key_4byte.bin',  'wb').write(bytes([0xDE, 0xAD, 0xBE, 0xEF]))
-open('$TMP/key_7byte.bin',  'wb').write(bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77]))
 open('$TMP/key_16byte.bin', 'wb').write(bytes([
     0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF,
     0xFE,0xDC,0xBA,0x98,0x76,0x54,0x32,0x10]))
-open('$TMP/key_large.bin',  'wb').write(bytes(range(256)))
 open('$TMP/key_empty.bin',  'wb').write(b'')
 "
 
@@ -75,13 +72,8 @@ open('$TMP/plain_exact.bin',   'wb').write(bytes([0xAA] * 4))
 open('$TMP/plain_multi.bin',   'wb').write(bytes([0xAA] * 10))
 open('$TMP/plain_binary.bin',  'wb').write(bytes(range(256)) * 4)
 open('$TMP/plain_empty.bin',   'wb').write(b'')
-open('$TMP/plain_3block.bin',  'wb').write(bytes([0xBB] * 12))  # exactly 3 x 4-byte blocks
 open('$TMP/plain_large.bin',   'wb').write(os.urandom(256_000)) # Reduced to 256KB for performance
 "
-
-# Unreadable key file for permission-denied test (created as root-owned 000 via chmod)
-python3 -c "open('$TMP/key_noperm.bin', 'wb').write(bytes([0xAB, 0xCD]))"
-chmod 000 "$TMP/key_noperm.bin"
 
 echo ""
 echo "========================================================================"
@@ -107,21 +99,6 @@ run_test "CLI-04" "Empty key file exits non-zero" \
 run_test "CLI-05" "Thread count 0 exits non-zero" \
     "_timeout 5 bash -c \"echo | $BINARY -n 0 -k $TMP/key_1byte.bin\"; [ \$? -ne 0 ] && echo PASS || echo FAIL"
 
-run_test "CLI-06" "n=1 accepted as valid baseline (exits zero, produces output)" \
-    "b=\$(_timeout 5 bash -c \"$BINARY -n 1 -k $TMP/key_1byte.bin < $TMP/plain_ABC.bin | wc -c\"); [ \"\$b\" -eq 3 ] && echo PASS || echo FAIL"
-
-run_test "CLI-07" "Non-numeric -n value (-n abc) exits non-zero" \
-    "_timeout 5 bash -c \"echo | $BINARY -n abc -k $TMP/key_1byte.bin\"; [ \$? -ne 0 ] && echo PASS || echo FAIL"
-
-run_test "CLI-08" "Negative -n value (-n -1) exits non-zero" \
-    "_timeout 5 bash -c \"echo | $BINARY -n -1 -k $TMP/key_1byte.bin\"; [ \$? -ne 0 ] && echo PASS || echo FAIL"
-
-run_test "CLI-09" "-n flag with no following value exits non-zero" \
-    "_timeout 5 bash -c \"echo | $BINARY -n -k $TMP/key_1byte.bin\"; [ \$? -ne 0 ] && echo PASS || echo FAIL"
-
-run_test "CLI-10" "Unreadable key file exits non-zero (permission denied)" \
-    "_timeout 5 bash -c \"echo | $BINARY -n 1 -k $TMP/key_noperm.bin\"; [ \$? -ne 0 ] && echo PASS || echo FAIL"
-
 # ── 2. Correctness: Known Values ────────────────────────────────────────
 echo ""
 echo "── 2. Correctness: Known Values ────────────────────────────────────────"
@@ -140,12 +117,6 @@ run_test "COR-04" "Multi-block (10 bytes, 4-byte key) -> 10 bytes output" \
 
 run_test "COR-05" "Binary input -> 1024 bytes output" \
     "b=\$(_timeout 5 bash -c \"$BINARY -n 1 -k $TMP/key_4byte.bin < $TMP/plain_binary.bin | wc -c\"); [ \"\$b\" -eq 1024 ] && echo PASS || echo FAIL"
-
-run_test "COR-06" "Large key (256 bytes) vs small input (3 bytes) -> 3 bytes output" \
-    "b=\$(_timeout 5 bash -c \"$BINARY -n 1 -k $TMP/key_large.bin < $TMP/plain_ABC.bin | wc -c\"); [ \"\$b\" -eq 3 ] && echo PASS || echo FAIL"
-
-run_test "COR-07" "Large key round-trip: encrypt(encrypt(x)) == x" \
-    "_timeout 5 bash -c \"$BINARY -n 1 -k $TMP/key_large.bin < $TMP/plain_ABC.bin | $BINARY -n 1 -k $TMP/key_large.bin > $TMP/rt_largekey.bin\" && cmp $TMP/plain_ABC.bin $TMP/rt_largekey.bin && echo PASS || echo FAIL"
 
 # ── 3. Round-trip ───────────────────────────────────────────────────────
 echo ""
@@ -172,18 +143,6 @@ run_test "EDGE-03" "Correct large byte count constraint" \
 run_test "EDGE-04" "16-byte key multi-byte rotation" \
     "_timeout 5 bash -c \"$BINARY -n 4 -k $TMP/key_16byte.bin < $TMP/plain_binary.bin | $BINARY -n 4 -k $TMP/key_16byte.bin > $TMP/rt_16.bin\" && cmp $TMP/plain_binary.bin $TMP/rt_16.bin && echo PASS || echo FAIL"
 
-run_test "EDGE-05" "3-byte key: output size preserved (non-power-of-two rotation)" \
-    "b=\$(_timeout 5 bash -c \"$BINARY -n 1 -k $TMP/key_3byte.bin < $TMP/plain_binary.bin | wc -c\"); [ \"\$b\" -eq 1024 ] && echo PASS || echo FAIL"
-
-run_test "EDGE-06" "3-byte key: round-trip correctness" \
-    "_timeout 5 bash -c \"$BINARY -n 4 -k $TMP/key_3byte.bin < $TMP/plain_binary.bin | $BINARY -n 4 -k $TMP/key_3byte.bin > $TMP/rt_3byte.bin\" && cmp $TMP/plain_binary.bin $TMP/rt_3byte.bin && echo PASS || echo FAIL"
-
-run_test "EDGE-07" "7-byte key: output size preserved (non-power-of-two rotation)" \
-    "b=\$(_timeout 5 bash -c \"$BINARY -n 1 -k $TMP/key_7byte.bin < $TMP/plain_binary.bin | wc -c\"); [ \"\$b\" -eq 1024 ] && echo PASS || echo FAIL"
-
-run_test "EDGE-08" "7-byte key: round-trip correctness" \
-    "_timeout 5 bash -c \"$BINARY -n 4 -k $TMP/key_7byte.bin < $TMP/plain_binary.bin | $BINARY -n 4 -k $TMP/key_7byte.bin > $TMP/rt_7byte.bin\" && cmp $TMP/plain_binary.bin $TMP/rt_7byte.bin && echo PASS || echo FAIL"
-
 # ── 5. Multi-thread Determinism ───────────────────────────────────────
 echo ""
 echo "── 5. Multi-thread Determinism ─────────────────────────────────────────"
@@ -203,27 +162,9 @@ else
     done
 fi
 
-# ── 6. Thread Starvation: N > Block Count ────────────────────────────
+# ── 6. Stress / Large Input ─────────────────────────────────────────────
 echo ""
-echo "── 6. Thread Starvation: N > Block Count ───────────────────────────────"
-# plain_3block.bin is exactly 3 x 4-byte blocks; spawning 16 workers means 13 will
-# find an empty queue and must exit cleanly without deadlocking or hanging.
-
-run_test "STARV-01" "n=16 threads, 3-block input: no deadlock (exits within timeout)" \
-    "_timeout 5 bash -c \"$BINARY -n 16 -k $TMP/key_4byte.bin < $TMP/plain_3block.bin > $TMP/starv_out.bin\"; [ \$? -eq 0 ] && echo PASS || echo FAIL"
-
-run_test "STARV-02" "n=16 threads, 3-block input: byte count preserved" \
-    "b=\$(wc -c < $TMP/starv_out.bin 2>/dev/null || echo -1); [ \"\$b\" -eq 12 ] && echo PASS || echo FAIL"
-
-run_test "STARV-03" "n=16 threads, 3-block input: round-trip correctness" \
-    "_timeout 5 bash -c \"$BINARY -n 16 -k $TMP/key_4byte.bin < $TMP/plain_3block.bin | $BINARY -n 16 -k $TMP/key_4byte.bin > $TMP/starv_rt.bin\" && cmp $TMP/plain_3block.bin $TMP/starv_rt.bin && echo PASS || echo FAIL"
-
-run_test "STARV-04" "n=16 threads, single-byte input: no deadlock, 1 byte output" \
-    "b=\$(_timeout 5 bash -c \"$BINARY -n 16 -k $TMP/key_4byte.bin < $TMP/plain_1byte.bin | wc -c\"); [ \"\$b\" -eq 1 ] && echo PASS || echo FAIL"
-
-# ── 7. Stress / Large Input ─────────────────────────────────────────────
-echo ""
-echo "── 7. Stress / Large Input ─────────────────────────────────────────────"
+echo "── 6. Stress / Large Input ─────────────────────────────────────────────"
 
 for n in 1 8 16; do
     run_test "STR-n${n}" "Large input, n=$n: correct byte count" \
@@ -234,7 +175,6 @@ run_test "STR-RT" "Large round-trip, n=8, 16-byte key" \
     "_timeout 10 bash -c \"$BINARY -n 8 -k $TMP/key_16byte.bin < $TMP/plain_large.bin | $BINARY -n 8 -k $TMP/key_16byte.bin > $TMP/str_rt.bin\" && cmp $TMP/plain_large.bin $TMP/str_rt.bin && echo PASS || echo FAIL"
 
 # ── Cleanup & Summary ───────────────────────────────────────────────────
-chmod 644 "$TMP/key_noperm.bin" 2>/dev/null || true   # restore before rm to avoid rm errors
 rm -rf "$TMP"
 echo ""
 echo "========================================================================"

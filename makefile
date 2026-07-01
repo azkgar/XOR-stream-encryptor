@@ -1,7 +1,7 @@
 ###############################################################################
 # Makefile for encryptUtil — XOR Stream Encryption Utility
 #
-# Author: Azkary Garcia
+# Author: Azkary Garcia using Claude.ai
 # Date:   June 30th, 2026
 ###############################################################################
 

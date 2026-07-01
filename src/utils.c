@@ -5,7 +5,7 @@
  * This file implements the functions declared in utils.h.
  * 
  * @author Azkary Garcia
- * @date June 30th, 2026
+ * @date July 1st, 2026
  * @version 1.0.0
 *********************************************************************************************/
 
@@ -87,7 +87,7 @@ void *workerThread(void *context)
  * @name createBlock
  * @brief Allocates and initializes a Block struct with data read from stdin.
  * @param keyLen  Size of the key in bytes (also the block size).
- * @param key     Pointer to the rotated key for this block.
+ * @param key     Pointer to the pre-rotated key snapshot for this block.
  * @param blockIdx Index of this block in the input stream.
  * @return Pointer to a fully initialized Block, or NULL on EOF (0 bytes read).
  *         Exits on allocation failure.
@@ -107,18 +107,19 @@ Block *createBlock(size_t keyLen, uint8_t *key, size_t blockIdx)
         exit(1);
     }
 
-    // Allocate data buffer (holds raw bytes read from stdin)
+    // Allocate data buffer
     block->data = (uint8_t *)malloc(keyLen);
     if(block->data == NULL)
     {
         fprintf(stderr, "Error: failed to allocate memory for block data\n");
+        free(block);
         exit(1);
     }
 
     // Read up to keyLen bytes from stdin into data buffer
     bytesRead = fread(block->data, 1, keyLen, stdin);
 
-    // End of frame, no data to process, discard the pre-allocated shell and signal caller
+    // End of frame, discard pre-allocated shell and signal caller
     if(bytesRead == 0)
     {
         free(block->data);
@@ -126,17 +127,13 @@ Block *createBlock(size_t keyLen, uint8_t *key, size_t blockIdx)
         return NULL;
     }
 
-    // Fill in block metadata
-    block->dataLen  = bytesRead;
-    block->keyLen   = keyLen;
-    block->blockIdx = blockIdx;
-    block->done     = 0;
-
     // Allocate and snapshot the pre-rotated key for this block
     block->key = (uint8_t *)malloc(keyLen);
     if(block->key == NULL)
     {
         fprintf(stderr, "Error: failed to allocate memory for block key\n");
+        free(block->data);
+        free(block);
         exit(1);
     }
     memcpy(block->key, key, keyLen);
@@ -146,10 +143,17 @@ Block *createBlock(size_t keyLen, uint8_t *key, size_t blockIdx)
     if(block->output == NULL)
     {
         fprintf(stderr, "Error: failed to allocate memory for block output\n");
+        free(block->key);
+        free(block->data);
+        free(block);
         exit(1);
     }
 
-    // Initialize block mutex and condition variable
+    // All allocations succeeded. Fill in metadata and init sync primitives
+    block->dataLen  = bytesRead;
+    block->keyLen   = keyLen;
+    block->blockIdx = blockIdx;
+    block->done     = 0;
     pthread_mutex_init(&block->lock, NULL);
     pthread_cond_init(&block->ready, NULL);
 
