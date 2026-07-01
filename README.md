@@ -311,12 +311,12 @@ the queue fills — even though workers are actively consuming blocks and
 encryptUtil/
 ├── include/
 │   ├── crypto.h      — rotateKeyLeft prototype, BIT_KEY_ROTATION and LSB_MASK macros
-│   ├── queue.h       — Block and WorkQueue structs; queue, writeBlock, isBlockDone prototypes
+│   ├── queue.h       — Block and WorkQueue structs; workQueueInit, workQueueDestroy, workQueuePush, writeBlock prototypes
 │   └── utils.h       — workerThread, createBlock, drainPendingBlocks, processStdin prototypes
 ├── src/
 │   ├── main.c        — parseArgs · loadKey · spawnWorkers · main (pure orchestration, ~40 lines)
-│   ├── crypto.c      — rotateKeyLeft: multi-byte left bit-rotation in-place
-│   ├── queue.c       — WorkQueue init/destroy/push · writeBlock · isBlockDone
+│   ├── crypto.c      — rotateKeyLeft
+│   ├── queue.c       — WorkQueue init/destroy/push · writeBlock
 │   └── utils.c       — createBlock · drainPendingBlocks · workerThread · processStdin
 ├── tst/
 │   ├── run_tests.sh    — self-contained test script (40 cases, 7 categories, macOS + Linux)
@@ -331,14 +331,14 @@ encryptUtil/
 graph TD
     main["🔧 main.c\nparseArgs · loadKey\nspawnWorkers · main"]
     utils["⚙️ utils.c\ncreateBlock · drainPendingBlocks\nworkerThread · processStdin"]
-    queue["📦 queue.c\nworkQueueInit · workQueueDestroy\nworkQueuePush · writeBlock · isBlockDone"]
-    crypto["🔐 crypto.c\nrotateKeyLeft"]
+    queue["📦 queue.c\nworkQueueInit · workQueueDestroy\nworkQueuePush · writeBlock"]
+    crypto["🔐 crypto.c\rotateKeyLeft"]
 
     main -->|"processStdin()"| utils
     main -->|"workQueueInit/Destroy()"| queue
     main -->|"spawnWorkers → workerThread"| utils
     utils -->|"workQueuePush()"| queue
-    utils -->|"writeBlock() · isBlockDone()"| queue
+    utils -->|"writeBlock()"| queue
     utils -->|"rotateKeyLeft()"| crypto
 ```
 
@@ -352,8 +352,8 @@ wiring with no business logic.
 
 | Function | Responsibility |
 |---|---|
-| `parseArgs` | Parses `-n` and `-k` via `getopt`, validates both, returns 0/1 |
-| `loadKey` | Opens key file, sizes it, mallocs buffer, freads bytes, returns pointer |
+| `parseArgs` | Parses `-n` and `-k` via `getopt`; validates thread count using `strtol` with `errno` and `INT_MAX` range check; returns 0/1 |
+| `loadKey` | Opens key file; checks `fseek` and `ftell` for errors before casting; mallocs buffer; freads bytes; returns pointer |
 | `spawnWorkers` | Mallocs thread pool, calls `pthread_create` for each, handles partial failure with join+cleanup |
 | `main` | Calls the three helpers in order, runs `processStdin`, joins threads, frees everything |
 
@@ -375,11 +375,10 @@ wiring with no business logic.
 
 | Function | Responsibility |
 |---|---|
-| `workQueueInit` | Mallocs `blocks[]` array, zeroes all fields, inits mutex + both condvars |
+| `workQueueInit` | Mallocs `blocks[]` array, zeroes all fields, inits mutex + both condvars; returns 0 on success, 1 on failure |
 | `workQueueDestroy` | Frees `blocks[]`, destroys mutex + condvars |
-| `workQueuePush` | Blocks on `notFull` when full, inserts at tail, signals `notEmpty` |
-| `writeBlock` | Waits on `block->ready`, fwrites output, checks return value, destroys sync primitives, frees all sub-buffers and struct |
-| `isBlockDone` | Thread-safe non-blocking peek at `block->done` under `block->lock` |
+| `workQueuePush` | Blocks on `notFull` when full, inserts at tail, increments `count`, signals `notEmpty` |
+| `writeBlock` | Waits on `block->ready`, copies output pointer and length, releases lock, fwrites outside lock, checks return value, destroys sync primitives, frees all sub-buffers and struct |
 
 > 💡 **Why is `writeBlock` in `queue.c` and not `utils.c`?** `writeBlock`
 > directly accesses `block->lock` and `block->ready` — the Block struct's
@@ -448,7 +447,7 @@ make
 bash tst/run_tests.sh
 ```
 
-The script creates its own temporary fixtures in `/tmp`, runs all 35 tests,
+The script creates its own temporary fixtures in `/tmp`, runs all 40 tests,
 prints a detailed report to stdout, and exits with code `0` on all-pass
 or `1` if any test fails. Compatible with both Linux and macOS — no
 external dependencies beyond `bash`, `python3`, and `od`.
@@ -565,6 +564,19 @@ are private to `main.c` and not part of any public interface. This
 prevents accidental external linkage and signals clearly to any reader
 that these functions are local implementation details, not reusable APIs.
 
+### Why signal `notFull` before unlocking in `workerThread`?
+
+```c
+queue->count--;
+pthread_cond_signal(&queue->notFull);  // signal BEFORE unlock
+pthread_mutex_unlock(&queue->lock);
+```
+
+Signaling under the lock avoids a race where the producer could wake up,
+re-check `count == capacity` (still true), and go back to sleep — all
+between the worker's unlock and signal. Signaling first guarantees the
+producer sees the updated `count` when it wakes.
+
 ### Why is `writeBlock` in `queue.c` rather than `utils.c`?
 
 `writeBlock` directly accesses `block->lock` and `block->ready` — the
@@ -599,4 +611,4 @@ as long as blocks exist in the queue. `finished` only tells them to stop
 
 ## 👤 Author
 
-Azkary Garcia using Claude.ai — July 2026
+Azkary Garcia with the help of Claude.ai — July 2026
