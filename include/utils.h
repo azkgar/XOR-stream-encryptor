@@ -42,7 +42,7 @@ void *workerThread(void *context);
 /**
  * @brief Allocates and initializes a Block struct with data read from stdin.
  * @param keyLen Size of the key in bytes (also the block size).
- * @param key PPointer to the rotated key for this block.
+ * @param key Pointer to the rotated key for this block.
  * @param blockIdx Index of this block in the input stream.
  * @return Pointer to a fully initialized Block, or NULL on EOF (0 bytes read).
  */

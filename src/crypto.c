@@ -9,6 +9,7 @@
  * @version 1.0.0
 *********************************************************************************************/
 
+#define _POSIX_C_SOURCE 200809L
 #include "crypto.h"
 
 /**********************************************************************************************
@@ -35,14 +36,14 @@ void rotateKeyLeft(uint8_t *key, size_t keyLen)
         nextByteMSB = (key[idx + 1u] >> 7u) & LSB_MASK;
 
         // Rotate key by BIT_KEY_ROTATION bits to the left for the current byte
-        key[idx] <<= BIT_KEY_ROTATION ;
+        key[idx] <<= BIT_KEY_ROTATION;
 
         // Set last bit to the stored one
         key[idx] |= nextByteMSB;
     }
 
     // Rotate key by BIT_KEY_ROTATION bits to the left for the last byte
-    key[keyLen - 1u] <<= BIT_KEY_ROTATION ;
+    key[keyLen - 1u] <<= BIT_KEY_ROTATION;
 
     // Set last bit that wraps up from the 1st byte
     key[keyLen - 1u] |= overflowBit;
