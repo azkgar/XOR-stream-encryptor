@@ -67,8 +67,9 @@ typedef struct WorkQueue {
  * @brief Initializes the work queue with the specified capacity.
  * @param queue Pointer to the WorkQueue structure to initialize.
  * @param capacity Maximum number of blocks the queue can hold.
+ * @return 0 on success, 1 on allocation failure.
  */
-void workQueueInit(WorkQueue *queue, size_t capacity);
+int workQueueInit(WorkQueue *queue, size_t capacity);
 
 /**
  * @brief Destroys the work queue and frees associated resources.

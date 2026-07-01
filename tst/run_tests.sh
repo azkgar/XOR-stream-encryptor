@@ -50,7 +50,14 @@ if [ ! -x "$BINARY" ]; then
     exit 1
 fi
 
+# ---------------------------------------------------------------------------
+# Create test fixtures
+# ---------------------------------------------------------------------------
 mkdir -p "$TMP"
+
+# Restore permissions on any leftover noperm file from a previous interrupted
+# run — otherwise Python or rm may fail on the next setup
+chmod 644 "$TMP/key_noperm.bin" 2>/dev/null || true
 
 # Key files
 python3 -c "
@@ -65,7 +72,12 @@ open('$TMP/key_large.bin',  'wb').write(bytes(range(256)))
 open('$TMP/key_empty.bin',  'wb').write(b'')
 "
 
-# Plaintext fixtures (Optimized scale)
+# Permission-denied key file — created in bash so chmod lifecycle stays
+# entirely in shell, avoiding Python PermissionError on repeated runs
+printf '\xAB\xCD' > "$TMP/key_noperm.bin"
+chmod 000 "$TMP/key_noperm.bin"
+
+# Plaintext fixtures
 python3 -c "
 import os
 open('$TMP/plain_ABC.bin',     'wb').write(b'ABC')
@@ -75,13 +87,9 @@ open('$TMP/plain_exact.bin',   'wb').write(bytes([0xAA] * 4))
 open('$TMP/plain_multi.bin',   'wb').write(bytes([0xAA] * 10))
 open('$TMP/plain_binary.bin',  'wb').write(bytes(range(256)) * 4)
 open('$TMP/plain_empty.bin',   'wb').write(b'')
-open('$TMP/plain_3block.bin',  'wb').write(bytes([0xBB] * 12))  # exactly 3 x 4-byte blocks
-open('$TMP/plain_large.bin',   'wb').write(os.urandom(256_000)) # Reduced to 256KB for performance
+open('$TMP/plain_3block.bin',  'wb').write(bytes([0xBB] * 12))
+open('$TMP/plain_large.bin',   'wb').write(os.urandom(256_000))
 "
-
-# Unreadable key file for permission-denied test (created as root-owned 000 via chmod)
-python3 -c "open('$TMP/key_noperm.bin', 'wb').write(bytes([0xAB, 0xCD]))"
-chmod 000 "$TMP/key_noperm.bin"
 
 echo ""
 echo "========================================================================"

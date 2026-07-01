@@ -12,6 +12,9 @@
 #define _POSIX_C_SOURCE 200809L
 #include "utils.h"
 #include "crypto.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /**********************************************************************************************
  * @name workerThread

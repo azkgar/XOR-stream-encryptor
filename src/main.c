@@ -66,7 +66,11 @@ int main(int argCount, char *argValues[])
     fprintf(stderr, "Threads: %d || Key Size: %zu bytes\n", threads, keyLen);
 
     // Initialize the shared work queue with capacity equal to thread count
-    workQueueInit(&queue, threads);
+    if(workQueueInit(&queue, threads) != 0)
+    {
+        free(key);
+        return 1;
+    }
 
     // Spawn all worker threads, get back their handles for joining later
     threadPool = spawnWorkers(&queue, threads);
@@ -118,16 +122,17 @@ static int parseArgs(int argCount, char *argValues[], int *threads, char **keyFi
         switch(parsedOption)
         {
             case 'n':
+            {
                 // Local variable to hold the end pointer for strtol parse validation
                 char *endPtr;
                 // Local variable to hold the parsed thread count
                 long parsedThreads;
 
-                // strtol detects non-numeric input via endPtr and out of range via errno
+                // strtol detects non-numeric input via endPtr and out-of-range via errno
                 errno = 0;
                 parsedThreads = strtol(optarg, &endPtr, 10);
-                
-                // Nothing was parsed, trailing non-numeric chars exist, or overflow
+
+                // Reject if nothing was parsed, trailing non-numeric chars exist, or overflow
                 if(endPtr == optarg || *endPtr != '\0' || errno != 0)
                 {
                     fprintf(stderr,
@@ -135,11 +140,11 @@ static int parseArgs(int argCount, char *argValues[], int *threads, char **keyFi
                             optarg);
                     return 1;
                 }
-
                 *threads = (int)parsedThreads;
                 break;
+            }
             case 'k':
-                // Store the key file path
+                // Store the key file path (points into argValues, no copy needed)
                 *keyFile = optarg;
                 break;
             default:

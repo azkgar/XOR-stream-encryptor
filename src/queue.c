@@ -19,8 +19,9 @@
  * @brief Initializes the work queue with the specified capacity.
  * @param queue Pointer to the work queue.
  * @param capacity Capacity of the queue.
+ * @return 0 on success, 1 on memory allocation failure.
 *********************************************************************************************/
-void workQueueInit(WorkQueue *queue, size_t capacity)
+int workQueueInit(WorkQueue *queue, size_t capacity)
 {
     // Allocate memory for the blocks queue
     queue->blocks = (Block **)malloc(sizeof(Block *) * capacity);
@@ -30,20 +31,22 @@ void workQueueInit(WorkQueue *queue, size_t capacity)
     {
         fprintf(stderr, 
                 "Error: failed to allocate memory for work queue\n");
-        exit(1);
+        return 1;
     }
 
-    // Initialize queue's head, tail, capacity, count, and finished flag
-    queue->head = 0;
-    queue->tail = 0;
+    // Initialize queue's head, tail, capacity, count and finished flag
+    queue->head     = 0;
+    queue->tail     = 0;
     queue->capacity = capacity;
-    queue->count = 0;
+    queue->count    = 0;
     queue->finished = 0;
 
-    // Initialize queue mutex and condition variables 
+    // Initialize queue mutex and condition variables
     pthread_mutex_init(&queue->lock, NULL);
     pthread_cond_init(&queue->notEmpty, NULL);
     pthread_cond_init(&queue->notFull, NULL);
+
+    return 0;
 }
 
 /**********************************************************************************************
