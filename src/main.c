@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
                     idx);
             pthread_mutex_lock(&queue.lock);
             queue.finished = 1;
-            pthread_cond_bradcast(&queue.notEmpty);
+            pthread_cond_broadcast(&queue.notEmpty);
             pthread_mutex_unlock(&queue.lock);
 
             for(int j = 0; j < idx; j++)
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
             free(threadPool);
             workQueueDestroy(&queue);
             free(key);
-            
+
             return 1;
         }
     }
