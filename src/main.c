@@ -102,7 +102,7 @@ int main(int argCount, char *argValues[])
  * @param keyFile    Output pointer populated with the key file path string.
  * @return 0 on success, 1 on invalid arguments.
 *********************************************************************************************/
-int parseArgs(int argCount, char *argValues[], int *threads, char **keyFile)
+static int parseArgs(int argCount, char *argValues[], int *threads, char **keyFile)
 {
     // Local variable to hold each parsed option character from getopt
     int parsedOption;
@@ -157,7 +157,7 @@ int parseArgs(int argCount, char *argValues[], int *threads, char **keyFile)
  * @param keyLen       Output pointer populated with the key length in bytes.
  * @return Pointer to buffer containing the key, or NULL on failure.
 *********************************************************************************************/
-uint8_t *loadKey(const char *keyFilePath, size_t *keyLen)
+static uint8_t *loadKey(const char *keyFilePath, size_t *keyLen)
 {
     // Local variable to hold the key file handle
     FILE *keyFileHandle;
@@ -165,6 +165,8 @@ uint8_t *loadKey(const char *keyFilePath, size_t *keyLen)
     uint8_t *keyBuffer;
     // Local variable to hold the number of bytes read from the key file
     size_t bytesRead;
+    // Local variable to hold the size of key file in bytes
+    long fileSize;
 
     // Open the key file in binary read mode
     keyFileHandle = fopen(keyFilePath, "rb");
@@ -176,7 +178,21 @@ uint8_t *loadKey(const char *keyFilePath, size_t *keyLen)
 
     // Seek to end to determine file size
     fseek(keyFileHandle, 0, SEEK_END);
-    *keyLen = (size_t)ftell(keyFileHandle);
+
+    // Get size of key file
+    fileSize = ftell(keyFileHandle);
+
+    // Check for errors in determining file size
+    if(fileSize == -1L)
+    {
+        fprintf(stderr, "Error: could not determine size of key file '%s'\n", keyFilePath);
+        fclose(keyFileHandle);
+        return NULL;
+    }
+
+    // Store the key length
+    *keyLen = (size_t)fileSize;
+
     rewind(keyFileHandle);
 
     // Reject empty key files
@@ -221,7 +237,7 @@ uint8_t *loadKey(const char *keyFilePath, size_t *keyLen)
  * @return Pointer to pthread_t array, or NULL on failure.
  *         On failure, any already running threads are joined before returning.
 *********************************************************************************************/
-pthread_t *spawnWorkers(WorkQueue *queue, int threads)
+static pthread_t *spawnWorkers(WorkQueue *queue, int threads)
 {
     // Local variable to hold the thread pool array
     pthread_t *threadPool;

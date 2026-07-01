@@ -5,7 +5,7 @@
  * This file implements the functions declared in crypto.h.
  * 
  * @author Azkary Garcia
- * @date June 30th, 2026
+ * @date July 1st, 2026
  * @version 1.0.0
 *********************************************************************************************/
 
@@ -47,5 +47,3 @@ void rotateKeyLeft(uint8_t *key, size_t keyLen)
     // Set last bit that wraps up from the 1st byte
     key[keyLen - 1u] |= overflowBit;
 }
-
-/* TODO: Lines of code 38 to 42 are the same as lines 45 to 49. Create a function to avoid code duplication*/
